@@ -10,58 +10,99 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import os
-import urllib
+import atexit
 import docker
-from docker.models.containers import Container
-from testcontainers.core.utils import inside_container
-from testcontainers.core.utils import default_gateway_ip
+from docker.errors import NotFound
+from docker.models.containers import Container, ContainerCollection
+import functools as ft
+import os
+from typing import List, Optional, Union
+import urllib
+
+from .utils import default_gateway_ip, inside_container, setup_logger
 
 
-class DockerClient(object):
-    def __init__(self, **kwargs):
+LOGGER = setup_logger(__name__)
+
+
+def _stop_container(container: Container) -> None:
+    try:
+        container.stop()
+    except NotFound:
+        pass
+    except Exception as ex:
+        LOGGER.warning("failed to shut down container %s with image %s: %s", container.id,
+                       container.image, ex)
+
+
+class DockerClient:
+    """
+    Thin wrapper around :class:`docker.DockerClient` for a more functional interface.
+    """
+    def __init__(self, **kwargs) -> None:
         self.client = docker.from_env(**kwargs)
 
-    def run(self, image: str,
-            command: str = None,
-            environment: dict = None,
-            ports: dict = None,
-            detach: bool = False,
-            stdout: bool = True,
-            stderr: bool = False,
-            remove: bool = False, **kwargs) -> Container:
-        return self.client.containers.run(image,
-                                          command=command,
-                                          stdout=stdout,
-                                          stderr=stderr,
-                                          remove=remove,
-                                          detach=detach,
-                                          environment=environment,
-                                          ports=ports,
-                                          **kwargs)
+    @ft.wraps(ContainerCollection.run)
+    def run(self, image: str, command: Union[str, List[str]] = None,
+            environment: Optional[dict] = None, ports: Optional[dict] = None,
+            detach: bool = False, stdout: bool = True, stderr: bool = False, remove: bool = False,
+            **kwargs) -> Container:
+        container = self.client.containers.run(
+            image, command=command, stdout=stdout, stderr=stderr, remove=remove, detach=detach,
+            environment=environment, ports=ports, **kwargs
+        )
+        if detach:
+            atexit.register(_stop_container, container)
+        return container
 
-    def port(self, container_id, port):
+    def port(self, container_id: str, port: int) -> int:
+        """
+        Lookup the public-facing port that is NAT-ed to :code:`port`.
+        """
         port_mappings = self.client.api.port(container_id, port)
         if not port_mappings:
-            raise ConnectionError(f'port mapping for container {container_id} and port {port} is '
+            raise ConnectionError(f'Port mapping for container {container_id} and port {port} is '
                                   'not available')
         return port_mappings[0]["HostPort"]
 
-    def get_container(self, container_id):
+    def get_container(self, container_id: str) -> Container:
+        """
+        Get the container with a given identifier.
+        """
         containers = self.client.api.containers(filters={'id': container_id})
         if not containers:
-            raise RuntimeError(f'could not get container with id {container_id}')
+            raise RuntimeError(f'Could not get container with id {container_id}')
         return containers[0]
 
-    def bridge_ip(self, container_id):
+    def bridge_ip(self, container_id: str) -> str:
+        """
+        Get the bridge ip address for a container.
+        """
         container = self.get_container(container_id)
-        return container['NetworkSettings']['Networks']['bridge']['IPAddress']
+        network_name = self.network_name(container_id)
+        return container['NetworkSettings']['Networks'][network_name]['IPAddress']
 
-    def gateway_ip(self, container_id):
+    def network_name(self, container_id: str) -> str:
+        """
+        Get the name of the network this container runs on
+        """
         container = self.get_container(container_id)
-        return container['NetworkSettings']['Networks']['bridge']['Gateway']
+        name = container['HostConfig']['NetworkMode']
+        if name == 'default':
+            return 'bridge'
+        return name
 
-    def host(self):
+    def gateway_ip(self, container_id: str) -> str:
+        """
+        Get the gateway ip address for a container.
+        """
+        container = self.get_container(container_id)
+        return container['NetworkSettings']['Networks'][network_name]['Gateway']
+
+    def host(self) -> str:
+        """
+        Get the hostname or ip address of the docker host.
+        """
         # https://github.com/testcontainers/testcontainers-go/blob/dd76d1e39c654433a3d80429690d07abcec04424/docker.go#L644
         # if os env TC_HOST is set, use it
         host = os.environ.get('TC_HOST')
