@@ -51,7 +51,7 @@ class DockerClient:
         # If we're docker in docker running on a custom network, we need to inherit the
         # network, so we can access the resulting container. Unless the user has specified
         # a network, then we'll assume the user knows best
-        if 'network' not in kwargs and not os.getenv('DOCKER_HOST'):
+        if 'network' not in kwargs:
             # See if we can find the host on our networks
             host_network = None
             try:
