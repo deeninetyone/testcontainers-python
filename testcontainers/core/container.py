@@ -90,7 +90,7 @@ class DockerContainer(object):
             return "localhost"
 
         # check testcontainers itself runs inside docker container
-        if inside_container() and not os.getenv("DOCKER_HOST"):
+        if inside_container():
             # If newly spawned container's gateway IP address from the docker
             # "bridge" network is equal to detected host address, we should use
             # container IP address, otherwise fall back to detected host
