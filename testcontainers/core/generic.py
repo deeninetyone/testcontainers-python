@@ -14,6 +14,7 @@
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_container_is_ready
 from deprecation import deprecated
+import time
 ADDITIONAL_TRANSIENT_ERRORS = []
 try:
     from sqlalchemy.exc import DBAPIError
@@ -24,6 +25,7 @@ except ImportError:
 
 class DbContainer(DockerContainer):
     def __init__(self, image, **kwargs):
+        self._startup_delay = kwargs.pop('startup_delay')
         super(DbContainer, self).__init__(image, **kwargs)
 
     @wait_container_is_ready(*ADDITIONAL_TRANSIENT_ERRORS)
@@ -52,6 +54,8 @@ class DbContainer(DockerContainer):
     def start(self):
         self._configure()
         super().start()
+        if self._startup_delay:
+            time.sleep(self._startup_delay)
         self._connect()
         return self
 
