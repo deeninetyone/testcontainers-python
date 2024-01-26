@@ -86,7 +86,7 @@ class DockerContainer(object):
     def get_container_host_ip(self) -> str:
         # infer from docker host
         host = self.get_docker_client().host()
-        if not host:
+        if not host or host == 'localnpipe':
             return "localhost"
 
         # check testcontainers itself runs inside docker container
