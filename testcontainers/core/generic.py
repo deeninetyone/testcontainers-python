@@ -25,7 +25,7 @@ except ImportError:
 
 class DbContainer(DockerContainer):
     def __init__(self, image, **kwargs):
-        self._startup_delay = kwargs.pop('startup_delay')
+        self._startup_delay = kwargs.pop('startup_delay', None)
         super(DbContainer, self).__init__(image, **kwargs)
 
     @wait_container_is_ready(*ADDITIONAL_TRANSIENT_ERRORS)
