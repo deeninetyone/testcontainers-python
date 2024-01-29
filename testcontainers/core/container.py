@@ -1,4 +1,5 @@
 import os
+import platform
 from deprecation import deprecated
 from docker.models.containers import Container
 
@@ -86,7 +87,7 @@ class DockerContainer(object):
     def get_container_host_ip(self) -> str:
         # infer from docker host
         host = self.get_docker_client().host()
-        if not host or host == 'localnpipe':
+        if not host or (host == 'localnpipe' and platform.system() == 'Windows'):
             return "localhost"
 
         # check testcontainers itself runs inside docker container
