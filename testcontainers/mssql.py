@@ -1,6 +1,6 @@
 from os import environ
 from testcontainers.core.generic import DbContainer
-import platform
+from typing import Optional
 
 
 class SqlServerContainer(DbContainer):
@@ -25,13 +25,15 @@ class SqlServerContainer(DbContainer):
     """
 
     def __init__(self, image="mcr.microsoft.com/mssql/server:2019-latest", user="SA", password=None,
-                 port=1433, dbname="tempdb", dialect: str = 'mssql+pyodbc', driver: str = "ODBC Driver 17 for SQL Server", **kwargs):
+                 port=1433, dbname="tempdb", dialect: str = 'mssql+pymssql', driver: Optional[str] = None, **kwargs):
         super(SqlServerContainer, self).__init__(image, **kwargs)
 
         self.SQLSERVER_PASSWORD = password or environ.get("SQLSERVER_PASSWORD", "1Secure*Password1")
         self.port_to_expose = port
         self.SQLSERVER_USER = user
         self.SQLSERVER_DBNAME = dbname
+        if dialect == "mssql+pyodbc" and driver is None:
+            raise ValueError("'driver' keyword-arguement is required when using pyodbc dialect")
         self.dialect = dialect
         self.driver = driver
 
