@@ -61,7 +61,7 @@ setuptools.setup(
         'google-cloud-pubsub': ['google-cloud-pubsub < 2'],
         'mongo': ['pymongo'],
         'redis': ['redis'],
-        'mssqlserver': ['pymssql'],
+        'mssqlserver': ['pymssql', 'pyodbc'],
         'neo4j': ['neo4j'],
         'kafka': ['kafka-python'],
         'rabbitmq': ['pika'],

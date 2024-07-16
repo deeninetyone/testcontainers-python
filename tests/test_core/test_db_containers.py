@@ -68,3 +68,9 @@ def test_docker_run_mssql():
         result = e.execute('select @@servicename')
         for row in result:
             assert row[0] == 'MSSQLSERVER'
+
+    with SqlServerContainer(image, dialect="mssql+pyodbc", driver="ODBC Driver 17 for SQL Server") as mssql:
+        e = sqlalchemy.create_engine(mssql.get_connection_url())
+        result = e.execute('select @@servicename')
+        for row in result:
+            assert row[0] == 'MSSQLSERVER'
