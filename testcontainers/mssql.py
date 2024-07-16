@@ -49,6 +49,4 @@ class SqlServerContainer(DbContainer):
         )
         if self.dialect == "mssql+pyodbc":
             url += f"?driver={'+'.join(self.driver.split(' '))}"
-        if platform.system() == "Windows":
-            url = url.replace("localnpipe", "localhost")
         return url
